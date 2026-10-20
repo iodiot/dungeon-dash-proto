@@ -143,11 +143,15 @@ export async function createGfx(canvas: HTMLCanvasElement): Promise<Gfx> {
   renderer.setPixelRatio(dprCap);
 
   const scene = new THREE.Scene();
+  // The camera sits behind the runner (-z) looking down +z, so screen-right is
+  // world -x. Mirror the rendered world on x so sim +x ('R') shows as screen-right.
+  // Sim, ghosts and chunk layouts stay untouched; only the lane-to-screen mapping flips.
+  scene.scale.x = -1;
   scene.background = new THREE.Color(0x243044);
   scene.fog = new THREE.Fog(0x243044, 16, 42);
   const hemi = new THREE.HemisphereLight(0xe7f1ff, 0x4a382c, 1.45);
   const dir = new THREE.DirectionalLight(0xfff4e4, 2.1);
-  dir.position.set(-3, 12, 4);
+  dir.position.set(3, 12, 4); // mirrored with the scene: keeps the light on screen-right
   scene.add(hemi, dir);
 
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 80);
@@ -244,7 +248,7 @@ export async function createGfx(canvas: HTMLCanvasElement): Promise<Gfx> {
   }
 
   function project(x: number, y: number, z: number): { x: number; y: number } | null {
-    proj.set(x, y, z).project(camera);
+    proj.set(-x, y, z).project(camera); // world -> mirrored scene space
     if (proj.z > 1) return null;
     const w = canvas.clientWidth || 1;
     const h = canvas.clientHeight || 1;
@@ -297,8 +301,9 @@ export async function createGfx(canvas: HTMLCanvasElement): Promise<Gfx> {
     shake *= Math.exp(-dt * (reduced ? 10 : 5));
     const sx = Math.sin(spin * 28) * shake;
     const sy = Math.cos(spin * 23) * shake * 0.6;
-    camera.position.set(look.x + sx, up + sy, look.z - back);
-    camera.lookAt(look.x, 0.2, look.z);
+    // Camera lives outside the mirrored scene, so place it in mirrored space (-x).
+    camera.position.set(-(look.x + sx), up + sy, look.z - back);
+    camera.lookAt(-look.x, 0.2, look.z);
     camera.fov += ((portrait ? 50 : 40) + (pose.kind === 'dash' ? 4 : 0) - camera.fov) * Math.min(1, dt * 8);
     camera.updateProjectionMatrix();
 
