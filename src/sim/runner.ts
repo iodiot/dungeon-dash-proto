@@ -166,7 +166,10 @@ function enterCell(state: Runner, world: World, x: number, z: number, burrow: bo
   state.x = x;
   state.z = z;
   if (z > state.bestZ) state.bestZ = z;
-  if (z < 0) return;
+  if (z < 0) {
+    die(state, world, 'fall');
+    return;
+  }
   const cell = world.get(x, z);
   const pit = !cell.walk || broken(state, x, z, state.tick);
   if (pit && !burrow) {
@@ -249,7 +252,9 @@ function tryMove(state: Runner, world: World, action: Action): boolean {
   for (let i = 0; i < count; i++) {
     const nx = x + dx;
     const nz = z + dz;
-    if (nx < 0 || nx >= COLS || nz < -6) break;
+    // Moving beyond either edge of the lane is a real pit. Let the runner
+    // enter the out-of-bounds cell so enterCell can resolve the fall.
+    if (nz < -6) break;
     const pit = nz >= 0 && (!world.get(nx, nz).walk || broken(state, nx, nz, state.tick));
     if (pit && burrowLeft) {
       const fx = nx + dx;
@@ -290,7 +295,8 @@ function tryMove(state: Runner, world: World, action: Action): boolean {
 function forceMove(state: Runner, world: World, dx: number, dz: number): boolean {
   const nx = state.x + dx;
   const nz = state.z + dz;
-  if (nx < 0 || nx >= COLS || nz < -6) return false;
+  // Forced pushes (steam and conveyors) can also carry the runner off an edge.
+  if (nz < -6) return false;
   state.motion = {
     kind: 'hop',
     cells: [

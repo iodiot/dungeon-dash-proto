@@ -2,7 +2,7 @@ import { CHUNKS, ChunkTemplate, SHRINE_ROWS, TUTORIAL } from './chunks';
 import { hash32, mulberry32 } from './rng';
 import { Biome, BoulderSpec, Cell, COLS, Swing } from './types';
 
-const BACK: Cell = blank('back', 'crypt', true);
+const BACK: Cell = blank('back', 'crypt', false);
 
 function blank(chunkId: string, biome: Biome, walk: boolean): Cell {
   return {
@@ -25,7 +25,7 @@ function blank(chunkId: string, biome: Biome, walk: boolean): Cell {
 
 function targetDiff(z: number, biome: Biome): { min: number; max: number } {
   if (biome === 'crypt') {
-    if (z < 80) return { min: 1, max: 1 };
+    if (z < 40) return { min: 1, max: 1 };
     if (z < 160) return { min: 1, max: 2 };
     return { min: 2, max: 3 };
   }

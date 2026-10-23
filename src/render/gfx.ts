@@ -81,6 +81,46 @@ function tileHeight(x: number, z: number): number {
   return 0;
 }
 
+function crystalGeometry(THREE: T): import('three').BufferGeometry {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const bottom: [number, number, number] = [0, -0.5, 0];
+  const top: [number, number, number] = [0, 0.5, 0];
+  const lower = Array.from({ length: 6 }, (_, i): [number, number, number] => {
+    const a = (i / 6) * Math.PI * 2;
+    return [Math.cos(a) * 0.42, -0.12, Math.sin(a) * 0.42];
+  });
+  const upper = Array.from({ length: 6 }, (_, i): [number, number, number] => {
+    const a = (i / 6) * Math.PI * 2 + Math.PI / 12;
+    return [Math.cos(a) * 0.48, 0.12, Math.sin(a) * 0.48];
+  });
+  const facets = [0x36b6d9, 0x8aeaff, 0x2085b4, 0x58d9ee, 0x276f9d, 0xb0f4ff];
+  const face = (a: [number, number, number], b: [number, number, number], c: [number, number, number], hex: number): void => {
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const normal = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+    const center = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
+    if (normal[0] * center[0] + normal[1] * center[1] + normal[2] * center[2] < 0) [b, c] = [c, b];
+    const tint = new THREE.Color(hex);
+    for (const point of [a, b, c]) {
+      positions.push(...point);
+      colors.push(tint.r, tint.g, tint.b);
+    }
+  };
+  for (let i = 0; i < 6; i++) {
+    const next = (i + 1) % 6;
+    face(bottom, lower[i], lower[next], facets[(i + 2) % facets.length]);
+    face(lower[i], upper[i], upper[next], facets[i % facets.length]);
+    face(lower[i], upper[next], lower[next], facets[(i + 1) % facets.length]);
+    face(top, upper[next], upper[i], facets[(i + 3) % facets.length]);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 export interface Gfx {
   backend: 'webgpu' | 'webgl2';
   tags: ScreenTag[];
@@ -161,24 +201,42 @@ export async function createGfx(canvas: HTMLCanvasElement): Promise<Gfx> {
   scene.add(abyss);
 
   const lambert = new THREE.MeshLambertMaterial({ flatShading: true });
+  const metal = new THREE.MeshStandardMaterial({ roughness: 0.64, metalness: 0.32, flatShading: true });
   const basicMat = new THREE.MeshBasicMaterial();
   const shadowMat = new THREE.MeshBasicMaterial({ color: 0x05060a, transparent: true, opacity: 0.45, depthWrite: false });
 
   const tiles = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.92, 0.22, 0.92), lambert, 240), 240, THREE);
-  const coins = new Batch(new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.16, 0), basicMat, 80), 80, THREE);
-  const sparks = new Batch(new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.11, 0), basicMat.clone(), 40), 40, THREE);
-  const blocks = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.78, 0.56, 0.78), basicMat.clone(), 40), 40, THREE);
+  const coins = new Batch(new THREE.InstancedMesh(new THREE.CylinderGeometry(0.15, 0.15, 0.055, 10), metal.clone(), 80), 80, THREE);
+  const coinFaces = new Batch(new THREE.InstancedMesh(new THREE.CylinderGeometry(0.105, 0.105, 0.062, 8), basicMat.clone(), 80), 80, THREE);
+  const crystalMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    emissive: 0x075276,
+    emissiveIntensity: 0.42,
+    roughness: 0.28,
+    metalness: 0.2,
+    flatShading: true,
+  });
+  const sparks = new Batch(new THREE.InstancedMesh(crystalGeometry(THREE), crystalMat, 40), 40, THREE);
+  const blocks = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.78, 0.56, 0.78), lambert.clone(), 40), 40, THREE);
+  const crusherBands = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.86, 0.075, 0.86), metal.clone(), 80), 80, THREE);
+  const crusherMarks = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.32, 0.09, 0.05), basicMat.clone(), 40), 40, THREE);
   const shadows = new Batch(new THREE.InstancedMesh(new THREE.PlaneGeometry(0.8, 0.8), shadowMat, 40), 40, THREE);
-  const hammers = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.72, 0.42, 0.72), basicMat.clone(), 24), 24, THREE);
-  const bars = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.08, 2.4, 0.08), lambert.clone(), 24), 24, THREE);
+  const hammers = new Batch(new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.38, 0), metal.clone(), 24), 24, THREE);
+  const hammerBands = new Batch(new THREE.InstancedMesh(new THREE.TorusGeometry(0.3, 0.035, 4, 8), metal.clone(), 24), 24, THREE);
+  const chainLinks = new Batch(new THREE.InstancedMesh(new THREE.TorusGeometry(0.065, 0.018, 4, 7), metal.clone(), 240), 240, THREE);
+  const bars = new Batch(new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.22, 0), metal.clone(), 24), 24, THREE);
   const rocks = new Batch(new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.36, 0), lambert.clone(), 16), 16, THREE);
   const bugs = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.62, 0.28, 0.42), lambert.clone(), 16), 16, THREE);
   const crabs = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.7, 0.22, 0.48), lambert.clone(), 12), 12, THREE);
   const arrows = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.18, 0.06, 0.34), basicMat.clone(), 40), 40, THREE);
   const pillars = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.34, 1.8, 0.34), lambert.clone(), 80), 80, THREE);
+  const pillarDetails = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.48, 0.14, 0.48), lambert.clone(), 100), 100, THREE);
+  const sconces = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 0.24, 0.16), metal.clone(), 16), 16, THREE);
+  const flames = new Batch(new THREE.InstancedMesh(new THREE.ConeGeometry(0.12, 0.3, 5), basicMat.clone(), 16), 16, THREE);
+  const flameCores = new Batch(new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.055, 0), basicMat.clone(), 16), 16, THREE);
   const cracks = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.04, 0.08), basicMat.clone(), 40), 40, THREE);
   const marks = new Batch(new THREE.InstancedMesh(new THREE.BoxGeometry(0.28, 0.18, 0.28), lambert.clone(), 12), 12, THREE);
-  for (const batch of [tiles, coins, sparks, blocks, shadows, hammers, bars, rocks, bugs, crabs, arrows, pillars, cracks, marks]) {
+  for (const batch of [tiles, coins, coinFaces, sparks, blocks, crusherBands, crusherMarks, shadows, hammers, hammerBands, chainLinks, bars, rocks, bugs, crabs, arrows, pillars, pillarDetails, sconces, flames, flameCores, cracks, marks]) {
     scene.add(batch.mesh);
   }
   void shadows;
@@ -340,16 +398,25 @@ export async function createGfx(canvas: HTMLCanvasElement): Promise<Gfx> {
 
     tiles.begin();
     coins.begin();
+    coinFaces.begin();
     sparks.begin();
     blocks.begin();
+    crusherBands.begin();
+    crusherMarks.begin();
     shadows.begin();
     hammers.begin();
+    hammerBands.begin();
+    chainLinks.begin();
     bars.begin();
     rocks.begin();
     bugs.begin();
     crabs.begin();
     arrows.begin();
     pillars.begin();
+    pillarDetails.begin();
+    sconces.begin();
+    flames.begin();
+    flameCores.begin();
     cracks.begin();
     marks.begin();
 
@@ -357,10 +424,16 @@ export async function createGfx(canvas: HTMLCanvasElement): Promise<Gfx> {
       if (z % 2 === 0) {
         const py = 0.9;
         const pc = forge ? 0x6a4634 : 0x5c7088;
-        pillars.push(-0.78, py, z, 1, 1, 1, 0, 0, 0, pc);
-        pillars.push(4.78, py, z, 1, 1, 1, 0, 0, 0, pc);
+        for (const px of [-0.78, 4.78]) {
+          pillars.push(px, py, z, 1, 1, 1, 0, 0, 0, pc);
+          pillarDetails.push(px, 0.18, z, 1, 1, 1, 0, 0, 0, forge ? 0x4d3025 : 0x46576c);
+          pillarDetails.push(px, 1.72, z, 1, 1, 1, 0, 0, 0, forge ? 0x80553b : 0x8291a5);
+        }
         if (z % 6 === 0) {
-          blocks.push(-0.78, 1.9, z, 0.28, 0.28, 0.28, 0, 0, 0, 0xff8a3a);
+          const px = z % 12 === 0 ? -0.52 : 4.52;
+          sconces.push(px, 1.36, z, 1, 1, 1, 0, 0, 0, forge ? 0x7c4428 : 0x655244);
+          flames.push(px, 1.62, z, 1, 1 + Math.sin(spin * 9 + z) * 0.12, 1, 0, spin * 0.8, 0, forge ? 0xff6b32 : 0xffa341);
+          flameCores.push(px, 1.63, z - 0.01, 1, 1, 1, 0, spin * 0.5, 0, 0xffe5a0);
         }
       }
       for (let x = 0; x < 5; x++) {
@@ -385,10 +458,13 @@ export async function createGfx(canvas: HTMLCanvasElement): Promise<Gfx> {
         tiles.push(x + ox, y, z, 1, 1, 1, rx, 0, rz, tileCol(cell, x, z, player.compass > 0, session, forge));
         if (cell.cracked && sink <= 0.22) cracks.push(x, h + 0.24, z, 1, 1, 1, 0, 0.4, 0, 0xff6a3c);
         if (cell.coin && !player.got.has(x + ',' + z)) {
-          coins.push(x, h + 0.55 + Math.sin(spin * 3 + x) * 0.06, z, 1, 1, 1, 0, spin * 2, 0, 0xffd24a);
+          const cy = h + 0.55 + Math.sin(spin * 3 + x) * 0.06;
+          const turn = spin * 1.8;
+          coins.push(x, cy, z, 1, 1, 1, Math.PI / 2, turn, 0, 0xc88927);
+          coinFaces.push(x, cy, z, 1, 1, 1, Math.PI / 2, turn, 0, 0xffdf78);
         }
         if (cell.spark && !player.got.has('s' + x + ',' + z)) {
-          sparks.push(x, h + 0.62, z, 1, 1, 1, spin * 3, spin * 2, 0, 0x8af6ff);
+          sparks.push(x, h + 0.62, z, 0.72, 0.76, 0.72, 0, spin * 1.25, 0, 0xffffff);
         }
         if (cell.conveyor) {
           const dir = cell.conveyor;
@@ -397,15 +473,21 @@ export async function createGfx(canvas: HTMLCanvasElement): Promise<Gfx> {
         if (cell.crusher) {
           const drop = crusherDrop(cell.crusher.phase, player.tick, player.telegraph);
           const by = 0.5 + (1 - drop) * 2.5;
-          blocks.push(x, by, z, 1, 1, 1, 0, 0, 0, 0xff5a3c);
+          blocks.push(x, by, z, 1, 1, 1, 0, 0, 0, forge ? 0x50423d : 0x59616a);
+          crusherBands.push(x, by + 0.17, z, 1, 1, 1, 0, 0, 0, forge ? 0xc97835 : 0xa57c47);
+          crusherBands.push(x, by - 0.17, z, 1, 1, 1, 0, 0, 0, forge ? 0xc97835 : 0xa57c47);
+          crusherMarks.push(x, by, z - 0.405, 1, 1, 1, 0, 0, 0, 0xff7045);
           const sc = 0.35 + drop * 0.9;
           shadows.push(x, h + 0.24, z, sc, sc, 1, -Math.PI / 2, 0, 0, 0x12080a);
         }
         if (cell.pendulum && !seenSwing.has('p' + z + ':' + cell.pendulum.min)) {
           seenSwing.add('p' + z + ':' + cell.pendulum.min);
           const s = sweep(cell.pendulum.min, cell.pendulum.max, player.tick, cell.pendulum.phase, SWING_PERIOD);
-          hammers.push(s.pos, 0.85, z, 1, 1, 1, 0, 0, 0, 0xffb14a);
-          bars.push(s.pos, 2.1, z, 1, 1, 1, 0, 0, 0, 0x6a5848);
+          hammers.push(s.pos, 0.85, z, 1, 1, 1, spin * 0.2, spin * 0.3, 0, 0x59616a);
+          hammerBands.push(s.pos, 0.87, z, 1, 1, 1, Math.PI / 2, spin * 0.3, 0, 0xd88b39);
+          for (let link = 0; link < 10; link++) {
+            chainLinks.push(s.pos, 1.28 + link * 0.22, z, 1, 1, 1, link % 2 ? Math.PI / 2 : 0, 0, 0, 0x646b73);
+          }
         }
         if (cell.boulder) {
           const id = cell.boulder.z0 + ':' + x;
@@ -456,16 +538,25 @@ export async function createGfx(canvas: HTMLCanvasElement): Promise<Gfx> {
 
     tiles.end();
     coins.end();
+    coinFaces.end();
     sparks.end();
     blocks.end();
+    crusherBands.end();
+    crusherMarks.end();
     shadows.end();
     hammers.end();
+    hammerBands.end();
+    chainLinks.end();
     bars.end();
     rocks.end();
     bugs.end();
     crabs.end();
     arrows.end();
     pillars.end();
+    pillarDetails.end();
+    sconces.end();
+    flames.end();
+    flameCores.end();
     cracks.end();
     marks.end();
 

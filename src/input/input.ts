@@ -15,6 +15,8 @@ const KEY: Record<string, Action> = {
   KeyE: 'ABILITY',
   KeyQ: 'ABILITY',
 };
+const KEY_REPEAT_DELAY_MS = 350;
+const KEY_REPEAT_INTERVAL_MS = 135;
 
 export interface Input {
   take(): Action | null;
@@ -28,6 +30,7 @@ export interface Input {
 
 export function createInput(target: HTMLElement): Input {
   const held = new Map<Action, number>();
+  const keyboardHeld = new Map<string, { action: Action; order: number; nextAt: number }>();
   const queue: Action[] = [];
   let enabled = false;
   let seq = 0;
@@ -45,6 +48,13 @@ export function createInput(target: HTMLElement): Input {
 
   function release(action: Action): void {
     held.delete(action);
+  }
+
+  function clear(): void {
+    queue.length = 0;
+    held.clear();
+    keyboardHeld.clear();
+    track = null;
   }
 
   function pointing(e: Event): boolean {
@@ -94,18 +104,10 @@ export function createInput(target: HTMLElement): Input {
   return {
     hold,
     release,
-    clear() {
-      queue.length = 0;
-      held.clear();
-      track = null;
-    },
+    clear,
     setEnabled(on: boolean) {
       enabled = on;
-      if (!on) {
-        queue.length = 0;
-        held.clear();
-        track = null;
-      }
+      if (!on) clear();
     },
     onKeyDown(e: KeyboardEvent) {
       const action = KEY[e.code];
@@ -116,15 +118,28 @@ export function createInput(target: HTMLElement): Input {
         push('ABILITY');
         return;
       }
-      hold(action);
+      push(action);
+      if (action === 'F' || action === 'B' || action === 'L' || action === 'R') {
+        keyboardHeld.set(e.code, { action, order: ++seq, nextAt: performance.now() + KEY_REPEAT_DELAY_MS });
+      }
     },
     onKeyUp(e: KeyboardEvent) {
-      const action = KEY[e.code];
-      if (!action || action === 'ABILITY') return;
-      release(action);
+      if (!KEY[e.code]) return;
+      keyboardHeld.delete(e.code);
     },
     take(): Action | null {
       if (queue.length) return queue.shift() ?? null;
+
+      let repeat: { action: Action; order: number; nextAt: number } | null = null;
+      for (const entry of keyboardHeld.values()) {
+        if (!repeat || entry.order > repeat.order) repeat = entry;
+      }
+      const now = performance.now();
+      if (repeat && repeat.nextAt <= now) {
+        repeat.nextAt = now + KEY_REPEAT_INTERVAL_MS;
+        return repeat.action;
+      }
+
       let best: Action | null = null;
       let t = -1;
       for (const [action, time] of held) {

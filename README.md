@@ -6,6 +6,8 @@ Playable prototype of a 3D dungeon runner. You are a courier of the Swift Guild,
 
 Live build: [https://iodiot.github.io/dungeon-dash-proto/](https://iodiot.github.io/dungeon-dash-proto/)
 
+![Dungeon Dash gameplay: blue charge crystal, coins, and fractured floor](./screenshots/dungeon-dash-gameplay.jpg)
+
 ## Run locally
 
 ```bash
@@ -28,7 +30,7 @@ Add `?debug=1` for fps, seed, and collapse gap. Add `?webgl=1` to skip the WebGP
 
 | Action | Touch | Keyboard |
 | --- | --- | --- |
-| Step forward | Tap, or swipe up a short way | W / Up (hold to chain) |
+| Step forward | Tap, or swipe up a short way | W / Up (hold to chain after a short pause) |
 | Sidestep | Swipe left or right | A D / Left Right |
 | Dash | Swipe up | Space or Shift |
 | Step back | Swipe down | S / Down |
@@ -38,7 +40,7 @@ Add `?debug=1` for fps, seed, and collapse gap. Add `?webgl=1` to skip the WebGP
 | Revive | Revive (ad) | V after death |
 | Pick a perk | Tap a card | 1 or 2 |
 
-On a phone the d-pad and Dash button appear. Swipes fire as soon as they are clear, so you do not have to lift your finger. The page does not scroll or zoom. Layout uses safe-area insets in portrait and landscape.
+On a phone the d-pad and Dash button appear. Swipes fire as soon as they are clear, so you do not have to lift your finger. Keyboard direction taps always take one step; holding a direction starts repeating after a short pause. The page does not scroll or zoom. Layout uses safe-area insets in portrait and landscape.
 
 ## Architecture
 
@@ -79,8 +81,8 @@ Point the iOS and Android web view at `dist/` (base path `/dungeon-dash-proto/` 
 
 - One-screen loop: title, run HUD (distance, coins, dash charges, echo race), perk choice, death, instant restart, stub revive, courier select.
 - Three couriers: Kira (start), Bagel the mole (burrow, 500 coins), Nox the fox lantern (earlier trap warnings, 1500). One upgrade each for 300 coins.
-- Chunked 5-lane halls, two biomes (crypt, then forge), traps (crusher, pendulum, steam knockback, cracked tiles, boulder, conveyor), beetle and crab, collapsing floor as the pursuer.
-- Coins and dash sparks, perks every 250 m (Magnet, Long Dash, Plating, Gold Rush, Compass).
+- Chunked 5-lane halls with early gaps and broken bridges, two biomes (crypt, then forge), traps (crusher, chained pendulum, steam knockback, cracked tiles, boulder, conveyor), beetle and crab, collapsing floor as the pursuer.
+- Faceted gold coins and blue charge crystals, perks every 250 m (Magnet, Long Dash, Plating, Gold Rush, Compass).
 - Tutorial stretch with no lethal traps, and a gentler collapse after three very short deaths.
 - Procedural low-poly look, screen shake, squash on landing, synth SFX, PWA manifest.
 

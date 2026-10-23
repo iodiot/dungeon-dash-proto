@@ -40,6 +40,12 @@ export const CHUNKS: ChunkTemplate[] = [
     rows: ['.....', 'X.o.X', '.....', '..o..', 'X.o.X', '.....', '..*..', '.o.o.', '.....', '.....'],
   },
   {
+    id: 'crypt_pit_intro',
+    biome: 'crypt',
+    diff: 1,
+    rows: ['.....', '.o.#.', '.....', '.#...', '..o..', '.....', '...#.', '.o...', '.....', '.....'],
+  },
+  {
     id: 'crypt_gaps',
     biome: 'crypt',
     diff: 2,
@@ -76,6 +82,12 @@ export const CHUNKS: ChunkTemplate[] = [
     rows: ['.....', '#.#.#', '.o.o.', '#.#.#', '.....', '..o..', '#...#', '.o.o.', '.....', '.....'],
   },
   {
+    id: 'crypt_broken_bridge',
+    biome: 'crypt',
+    diff: 2,
+    rows: ['.....', '##.##', '.....', '.#.#.', '..o..', '.....', '##.##', '...o.', '.#.#.', '.....'],
+  },
+  {
     id: 'crypt_mix',
     biome: 'crypt',
     diff: 3,
@@ -110,6 +122,12 @@ export const CHUNKS: ChunkTemplate[] = [
     biome: 'forge',
     diff: 2,
     rows: ['.....', '.o.o.', '..v..', '.o.o.', '.....', '..*..', '.....', '.o?o.', '.....', '.....'],
+  },
+  {
+    id: 'forge_fractures',
+    biome: 'forge',
+    diff: 2,
+    rows: ['.....', '##.##', '.....', '#...#', '.o.o.', '.#.#.', '..o..', '##.##', '.o.o.', '.....'],
   },
   {
     id: 'forge_sparks',
